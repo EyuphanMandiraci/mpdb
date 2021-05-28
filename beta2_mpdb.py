@@ -1,13 +1,13 @@
 from wget import download
 from sys import exit, argv
 from PyQt5.QtWidgets import QPushButton, QLabel, QLineEdit, QApplication, QGridLayout, QMainWindow
-from PyQt5.QtGui import QIcon, QPixmap, QImage
+from PyQt5.QtGui import QIcon, QPixmap, QImage, QCursor
 import webbrowser
 from PyQt5 import QtCore
 from requests import get
 import minecraft_launcher_lib as mll
 import subprocess
-from os import mkdir
+from os import mkdir, walk, getcwd
 import time
 
 class MPDB(QMainWindow):
@@ -15,6 +15,10 @@ class MPDB(QMainWindow):
     def __init__(self):
         super().__init__()
         self.initUI()
+        self.setMouseTracking(True)
+        
+        
+        
         
     def start_worker(self):
         self.thread = ThreadClass(parent=None,)  
@@ -31,6 +35,7 @@ class MPDB(QMainWindow):
     def initUI(self):
         self.resize(1000,600)
         self.setWindowTitle("TheModpackDatabase")
+        #self.graphicsView.setMouseTracking(True)
         
         #Discord Image
         self.image = QImage()
@@ -40,6 +45,7 @@ class MPDB(QMainWindow):
         self.pixmap = self.pixmap.scaled(64,64)
         self.image_label.setPixmap(self.pixmap)
         self.image_label.resize(64,64)
+        self.image_label.cursor()
         
         #Run Minecraft Button Beta
         self.run_minecraft = QPushButton("Run 1.16.5",self)
@@ -69,6 +75,7 @@ class MPDB(QMainWindow):
         if event.buttons() == QtCore.Qt.LeftButton:
             if 0 <= event.x() <= 64 and 0 <= event.y() <= 64:
                 self.discord()
+                
     
     #Open discord link 
     def discord(self):
@@ -87,9 +94,32 @@ class ThreadClass(QtCore.QThread):
         super(ThreadClass,self).__init__(parent)
         self.is_running = True
         self.mpdb = MPDB()
+        
+    
+    def printProgressBar(self,iteration,total,prefix='',suffix='',decimals=1, length=100, fill='█', printEnd="\r"):
+        percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+        filledLength = int(length * iteration // total)
+        bar = fill * filledLength + '-' * (length - filledLength)
+        print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end=printEnd)
+        if iteration == total:
+            print()
+
+        
+    def maximum(self,max_value,value):
+        max_value[0] = value    
+    
     def run(self):
         print("Starting...")
-        mll.install.install_minecraft_version("1.16.5","mpdb")
+        if not "mpdb" in walk(getcwd()):
+            mkdir("mpdb")
+            
+        max_value = [0]
+        callback = {
+            "setStatus": lambda text: print(text),
+            "setProgress": lambda value: self.printProgressBar(value, max_value[0]),
+            "setMax": lambda value: self.maximum(max_value, value)
+        }
+        mll.install.install_minecraft_version("1.16.5","mpdb",callback=callback)
         options = {"username":"TheKralGame"}
         subprocess.call(mll.command.get_minecraft_command("1.16.5","mpdb",options))
         self.any_signal.emit()
